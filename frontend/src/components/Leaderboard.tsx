@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface LeaderboardEntry {
   rank: number;
@@ -7,13 +7,32 @@ interface LeaderboardEntry {
   last_solve: string;
 }
 
-export default function Leaderboard() {
+interface LeaderboardData {
+  leaderboard: LeaderboardEntry[];
+  counts: Record<string, number>;
+}
+
+export default function Leaderboard({ onCounts }: { onCounts: (c: Record<string, number>) => void }) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch("http://localhost:5000/api/leaderboard", { cache: "no-store" });
+      const data: LeaderboardData = await res.json();
+      setEntries(data.leaderboard || []);
+      if (data.counts) onCounts(data.counts);
+    } catch (err) {
+      console.error("Failed to load leaderboard", err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/leaderboard")
-      .then(res => res.json())
-      .then(data => setEntries(data.leaderboard || []));
+    loadLeaderboard();
+    const interval = setInterval(loadLeaderboard, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -27,14 +46,28 @@ export default function Leaderboard() {
         </tr>
       </thead>
       <tbody>
-        {entries.map(e => (
-          <tr key={e.rank}>
-            <td>{e.rank}</td>
-            <td>{e.nickname}</td>
-            <td>{e.solves}</td>
-            <td>{e.last_solve}</td>
+        {loading ? (
+          <tr>
+            <td colSpan={4} style={{ textAlign: "center", opacity: 0.7 }}>
+              Loading leaderboard…
+            </td>
           </tr>
-        ))}
+        ) : entries.length === 0 ? (
+          <tr>
+            <td colSpan={4} style={{ textAlign: "center", opacity: 0.7 }}>
+              No solves yet.
+            </td>
+          </tr>
+        ) : (
+          entries.map((e) => (
+            <tr key={e.rank}>
+              <td>{e.rank}</td>
+              <td>{e.nickname}</td>
+              <td>{e.solves} {e.solves === 1 ? "solve" : "solves"}</td>
+              <td>{e.last_solve}</td>
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   );

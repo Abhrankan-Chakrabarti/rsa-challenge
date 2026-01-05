@@ -44,7 +44,9 @@ export default function GuessForm({ record }: GuessFormProps) {
       <input value={nickname} onChange={e => setNickname(e.target.value)} placeholder="Nickname" />
       <input value={guess} onChange={e => setGuess(e.target.value)} placeholder="Guess" />
       <button onClick={handleSubmit}>Check guess</button>
-      <div>{result}</div>
+      <div className={result.startsWith("✔") ? "ok" : result.startsWith("✖") ? "bad" : ""}>
+        {result}
+      </div>
     </div>
   );
 }

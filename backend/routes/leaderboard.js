@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
+    /* -------- Leaderboard -------- */
     const solves = await Solve.aggregate([
       {
         $group: {
@@ -13,28 +14,39 @@ router.get("/", async (req, res) => {
           last_solve: { $max: "$solved_at" }
         }
       },
-      { $sort: { solves: -1, last_solve: 1 } }
+      { $sort: { solves: -1, last_solve: 1 } } // DESC solves, ASC last_solve
     ]);
 
-    const leaderboard = solves.map((s, i) => ({
-      rank: i + 1,
+    let rank = 1;
+    const leaderboard = solves.map(s => ({
+      rank: rank++,
       nickname: s._id,
       solves: s.solves,
       last_solve: s.last_solve
     }));
 
-    const latest = await Solve.findOne().sort({ solved_at: -1 });
+    /* -------- Latest solve -------- */
+    const latestDoc = await Solve.findOne().sort({ solved_at: -1 });
+    const latest = latestDoc
+      ? {
+          nickname: latestDoc.nickname,
+          challenge: latestDoc.challenge,
+          solved_at: latestDoc.solved_at
+        }
+      : null;
 
-    const counts = await Solve.aggregate([
+    /* -------- Per-challenge counts -------- */
+    const countsAgg = await Solve.aggregate([
       { $group: { _id: "$challenge", solves: { $sum: 1 } } }
     ]);
+    const counts = Object.fromEntries(
+      countsAgg.map(c => [c._id, c.solves])
+    );
 
-    res.json({
-      leaderboard,
-      latest,
-      counts: Object.fromEntries(counts.map(c => [c._id, c.solves]))
-    });
+    /* -------- Response -------- */
+    res.json({ leaderboard, latest, counts });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "DB query failed" });
   }
 });

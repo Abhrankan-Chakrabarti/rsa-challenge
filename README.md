@@ -25,8 +25,10 @@ rsa-challenge/
 ├── frontend/
 │   ├── src/
 │   │   ├── App.tsx        # React app entry
-│   │   ├── components/    # ChallengeSelect, GuessForm, Leaderboard
-│   │   └── rsa_all_ciphertexts_hashed.json # Challenge data (seed source)
+│   │   ├── components/    # ChallengeSelect, GuessForm, Leaderboard, etc.
+│   │   ├── rsa_all_ciphertexts_hashed.json # Challenge data (seed source)
+│   │   ├── main.tsx       # React app bootstrap
+│   │   └── types.ts       # TypeScript types
 │   └── package.json
 └── package.json           # Root config with concurrently and seed shortcut
 ```

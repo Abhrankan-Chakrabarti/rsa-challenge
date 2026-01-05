@@ -2,18 +2,18 @@ import { useEffect, useState } from "react";
 import ChallengeSelect from "./components/ChallengeSelect";
 import GuessForm from "./components/GuessForm";
 import Leaderboard from "./components/Leaderboard";
-
-interface ChallengeRecord {
-  name: string;
-  sha256: string;
-  n: string;
-  e: number;
-  c: string;
-}
+import ChallengeMeta from "./components/ChallengeMeta";
+import HintBox from "./components/HintBox";
+import IntroBox from "./components/IntroBox";
+import LatestSolve from "./components/LatestSolve";
+import type { ChallengeRecord } from "./types";
+import "./App.css";
+import ThemeToggle from "./components/ThemeToggle";
 
 function App() {
   const [records, setRecords] = useState<ChallengeRecord[]>([]);
   const [selected, setSelected] = useState<ChallengeRecord | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch("http://localhost:5000/api/challenges")
@@ -29,9 +29,20 @@ function App() {
   return (
     <div className="App">
       <h1>RSA Factoring Challenge</h1>
-      <ChallengeSelect records={records} onSelect={setSelected} />
+      <ThemeToggle />
+      <p>
+        Each challenge encrypts a hidden plaintext using a historical RSA public key.
+        Recover the plaintext. Your guess is verified using SHA-256.
+      </p>
+      <IntroBox />
+      <ChallengeSelect records={records} onSelect={setSelected} counts={counts} />
+      <ChallengeMeta record={selected} />
+      <HintBox />
       <GuessForm record={selected} />
-      <Leaderboard />
+      <hr />
+      <h2>🏆 Leaderboard</h2>
+      <LatestSolve />
+      <Leaderboard onCounts={setCounts} />
     </div>
   );
 }
