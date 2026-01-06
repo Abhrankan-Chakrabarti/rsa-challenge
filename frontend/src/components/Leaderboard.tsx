@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 
+// --------------------------------------------------
+// API base URL (env → fallback → localhost)
+// --------------------------------------------------
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 interface LeaderboardEntry {
   rank: number;
   nickname: string;
@@ -12,16 +18,26 @@ interface LeaderboardData {
   counts: Record<string, number>;
 }
 
-export default function Leaderboard({ onCounts }: { onCounts: (c: Record<string, number>) => void }) {
+export default function Leaderboard({
+  onCounts
+}: {
+  onCounts: (c: Record<string, number>) => void;
+}) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function loadLeaderboard() {
     try {
-      const res = await fetch("http://localhost:5000/api/leaderboard", { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/api/leaderboard`, {
+        cache: "no-store"
+      });
       const data: LeaderboardData = await res.json();
+
       setEntries(data.leaderboard || []);
-      if (data.counts) onCounts(data.counts);
+
+      if (data.counts) {
+        onCounts(data.counts);
+      }
     } catch (err) {
       console.error("Failed to load leaderboard", err);
     } finally {
@@ -59,11 +75,13 @@ export default function Leaderboard({ onCounts }: { onCounts: (c: Record<string,
             </td>
           </tr>
         ) : (
-          entries.map((e) => (
+          entries.map(e => (
             <tr key={e.rank}>
               <td>{e.rank}</td>
               <td>{e.nickname}</td>
-              <td>{e.solves} {e.solves === 1 ? "solve" : "solves"}</td>
+              <td>
+                {e.solves} {e.solves === 1 ? "solve" : "solves"}
+              </td>
               <td>{e.last_solve}</td>
             </tr>
           ))
