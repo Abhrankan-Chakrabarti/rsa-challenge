@@ -6,7 +6,9 @@ import { useState } from "react";
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-// Define the shape of a challenge record
+// --------------------------------------------------
+// Types
+// --------------------------------------------------
 interface ChallengeRecord {
   name: string;
   sha256: string;
@@ -37,20 +39,23 @@ export default function GuessForm({ record }: GuessFormProps) {
   }
 
   async function handleSubmit() {
-    const normalized = guess.trim().toUpperCase();
-    const hash = await sha256hex(normalized);
+    const normalizedGuess = guess.trim().toUpperCase();
+    const normalizedName = nickname.trim();
+
+    const hash = await sha256hex(normalizedGuess);
 
     if (hash !== record.sha256.toLowerCase()) {
       setResult("✖ Incorrect guess.");
       return;
     }
 
-    if (!nickname.trim()) {
+    if (!normalizedName) {
       setResult("✖ Enter a nickname.");
       return;
     }
 
-    localStorage.setItem("rsa_nickname", nickname);
+    // Persist normalized nickname only
+    localStorage.setItem("rsa_nickname", normalizedName);
 
     try {
       const res = await fetch(`${API_BASE}/api/submit`, {
@@ -59,7 +64,7 @@ export default function GuessForm({ record }: GuessFormProps) {
         body: JSON.stringify({
           challenge: record.name,
           sha256: hash,
-          name: nickname
+          name: normalizedName
         })
       });
 
