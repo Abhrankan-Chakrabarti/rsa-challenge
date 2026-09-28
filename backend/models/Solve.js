@@ -7,4 +7,9 @@ const solveSchema = new mongoose.Schema({
   solved_at: { type: Date, default: Date.now }
 });
 
+// One solve per nickname per challenge, enforced by the database
+// itself. The app-level findOne check has a race window under
+// concurrent submissions; this index is the real guard.
+solveSchema.index({ nickname: 1, challenge: 1 }, { unique: true });
+
 export default mongoose.model("Solve", solveSchema);
