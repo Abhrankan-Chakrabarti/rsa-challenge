@@ -39,7 +39,9 @@ export default function GuessForm({ record }: GuessFormProps) {
   }
 
   async function handleSubmit() {
-    const normalizedGuess = guess.trim().toUpperCase();
+    // Canonical normalization -- must match the server's
+    // normalizePlaintext() exactly.
+    const normalizedGuess = guess.trim().replace(/\s+/g, " ").toUpperCase();
     const normalizedName = nickname.trim();
 
     const hash = await sha256hex(normalizedGuess);
@@ -63,13 +65,13 @@ export default function GuessForm({ record }: GuessFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           challenge: record.name,
-          sha256: hash,
+          plaintext: normalizedGuess,
           name: normalizedName
         })
       });
 
       const reply = await res.json();
-      setResult(reply.ok ? "✔ Solve recorded." : "Submission failed.");
+      setResult(reply.ok ? "✔ Solve recorded." : `✖ ${reply.error || "Submission failed."}`);
     } catch (err) {
       console.error("Submit failed:", err);
       setResult("Submission failed.");

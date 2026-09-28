@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import Solve from "../models/Solve.js";
 import Challenge from "../models/Challenge.js";
@@ -17,20 +18,35 @@ const submitLimiter = rateLimit({
   message: { ok: false, error: "Too many submissions, try again later" }
 });
 
-router.post("/", submitLimiter, async (req, res) => {
-  let { challenge, sha256, name } = req.body;
+// -----------------------------------------------
+// Canonical plaintext normalization. Must stay in
+// sync with GuessForm.tsx -- the client pre-checks
+// with the same function before submitting.
+// -----------------------------------------------
+function normalizePlaintext(s) {
+  return typeof s === "string" ? s.trim().replace(/\s+/g, " ").toUpperCase() : "";
+}
 
-  // -------------------------------
-  // Normalize inputs (CRITICAL)
-  // -------------------------------
+router.post("/", submitLimiter, async (req, res) => {
+  let { challenge, plaintext, name } = req.body;
+
   challenge = challenge?.trim();
-  sha256 = sha256?.trim().toLowerCase();
+  plaintext = normalizePlaintext(plaintext);
   name = name?.trim();
 
-  if (!challenge || !sha256 || !name) {
+  if (!challenge || !plaintext || !name) {
     return res.status(400).json({
       ok: false,
       error: "Missing or invalid fields"
+    });
+  }
+
+  // Plaintext alphabet: A-Z and spaces only (matches challenge data
+  // generation). Rejects anything else before it reaches the hasher.
+  if (!/^[A-Z ]+$/.test(plaintext)) {
+    return res.status(400).json({
+      ok: false,
+      error: "Plaintext may only contain A-Z and spaces"
     });
   }
 
@@ -45,11 +61,13 @@ router.post("/", submitLimiter, async (req, res) => {
 
   try {
     // -----------------------------------------------
-    // Verify the solve against the real challenge.
-    // Without these two checks, ANY (challenge, sha256, name)
-    // triple counts as a solve -- the leaderboard can be
-    // inflated with a single curl command.
+    // The client submits the PLAINTEXT, never the hash. The expected
+    // hash is public (it ships with the challenge data), so a submitted
+    // hash proves nothing. Proving you hold the plaintext IS the solve:
+    // recovering it requires factoring the modulus.
     // -----------------------------------------------
+    const hash = crypto.createHash("sha256").update(plaintext).digest("hex");
+
     const entry = await Challenge.findOne({ name: challenge });
     if (!entry) {
       return res.status(404).json({
@@ -82,7 +100,7 @@ router.post("/", submitLimiter, async (req, res) => {
     await Solve.create({
       nickname: name,
       challenge,
-      sha256
+      sha256: hash
     });
 
     res.json({ ok: true });
